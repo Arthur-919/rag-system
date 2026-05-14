@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>大黑屋 · RAG 暗渊知识库 | 幽智检索</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', 'Poppins', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at 20% 30%, #0a0a0f, #020205);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 动态星尘画布（与大黑屋主页同源） */
+        #starCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            display: block;
+        }
+
+        .glow-aura {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at 70% 40%, rgba(0, 20, 60, 0.45), transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* 主容器 */
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            height: 100vh;
+            display: flex;
+            gap: 24px;
+        }
+
+        /* 侧边栏 + 返回主页模块优化 */
+        .sidebar {
+            width: 320px;
+            background: rgba(8, 12, 22, 0.7);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            transition: border-color 0.2s ease;
+        }
+
+        .sidebar:hover {
+            border-color: rgba(0, 180, 255, 0.6);
+        }
+
+        .logo {
+            text-align: center;
+            padding: 12px 0;
+            position: relative;
+        }
+
+        .logo h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, #88bbff, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 2px;
+            text-shadow: 0 0 12px rgba(0, 153, 255, 0.3);
+            margin-bottom: 8px;
+        }
+
+        .logo p {
+            color: #8aa0c9;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        /* 优雅返回主页按钮 —— 玻璃质感激增 */
+        .back-home {
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+        .back-home-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: rgba(0, 30, 50, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 200, 255, 0.6);
+            border-radius: 60px;
+            padding: 12px 16px;
+            color: #bbebff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 1.5px;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 11px rgba(0,0,0,0.3);
+        }
+        .back-home-btn:hover {
+            background: rgba(0, 120, 200, 0.35);
+            border-color: #0cf;
+            transform: translateY(-3px);
+            box-shadow: 0 0 18px #00aaff;
+            color: white;
+        }
+        .back-home-btn svg {
+            stroke: #caf0ff;
+            transition: 0.2s;
+        }
+        .back-home-btn:hover svg {
+            stroke: white;
+            filter: drop-shadow(0 0 6px #0cf);
+        }
+
+        .status-card {
+            background: rgba(3, 6, 18, 0.6);
+            border-radius: 24px;
+            padding: 18px;
+            border-left: 3px solid #0cf;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            color: #b4c8f0;
+            font-size: 13px;
+            font-weight: 450;
+        }
+
+        .status-value {
+            color: #0cf;
+            font-weight: 600;
+            text-shadow: 0 0 4px #0cf;
+        }
+
+        .doc-list {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .doc-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .doc-list::-webkit-scrollbar-track {
+            background: #11161f;
+            border-radius: 10px;
+        }
+        .doc-list::-webkit-scrollbar-thumb {
+            background: #2e3a55;
+            border-radius: 10px;
+        }
+
+        .doc-title {
+            color: #fff;
+            font-size: 15px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed rgba(0, 212, 255, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .doc-item {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 12px 14px;
+            margin: 10px 0;
+            border-radius: 18px;
+            font-size: 12px;
+            color: #cbd5ff;
+            cursor: pointer;
+            transition: all 0.25s;
+            border: 1px solid transparent;
+            backdrop-filter: blur(2px);
+        }
+
+        .doc-item:hover {
+            background: rgba(0, 153, 255, 0.12);
+            border-color: rgba(0, 200, 255, 0.5);
+            transform: translateX(5px);
+            color: white;
+        }
+
+        /* 右侧对话区域 */
+        .chat-main {
+            flex: 1;
+            background: rgba(10, 12, 24, 0.55);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 12px 28px -8px black;
+            transition: border-color 0.2s;
+        }
+
+        .chat-main:hover {
+            border-color: rgba(0, 180, 255, 0.5);
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px 28px;
+            scroll-behavior: smooth;
+        }
+
+        .messages-area::-webkit-scrollbar {
+            width: 6px;
+        }
+        .messages-area::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        .messages-area::-webkit-scrollbar-thumb {
+            background: #0cf;
+            border-radius: 10px;
+        }
+
+        .message {
+            margin-bottom: 24px;
+            display: flex;
+            gap: 14px;
+            animation: fadeSlideUp 0.35s ease-out;
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            background: rgba(22, 28, 45, 0.8);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(0, 153, 255, 0.4);
+            box-shadow: 0 0 8px rgba(0, 153, 255, 0.2);
+        }
+
+        .message.user .avatar {
+            background: linear-gradient(145deg, #1d4a6e, #0f2d44);
+            border-color: #0cf;
+        }
+
+        .bubble {
+            max-width: 70%;
+            padding: 14px 22px;
+            border-radius: 26px;
+            line-height: 1.6;
+            font-size: 14px;
+            font-weight: 450;
+            position: relative;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            backdrop-filter: blur(4px);
+        }
+
+        .message.user .bubble {
+            background: linear-gradient(135deg, #0f5980, #0a3a57);
+            color: #f0f9ff;
+            border-bottom-right-radius: 6px;
+            border: 1px solid rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 12px rgba(0, 200, 255, 0.2);
+        }
+
+        .message.assistant .bubble {
+            background: rgba(22, 30, 48, 0.85);
+            border: 1px solid rgba(100, 150, 255, 0.45);
+            color: #e2edff;
+            border-bottom-left-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 8px;
+            padding: 14px 22px;
+            background: rgba(22, 30, 48, 0.85);
+            border-radius: 32px;
+            width: fit-content;
+            border: 1px solid rgba(106, 90, 205, 0.6);
+        }
+
+        .typing-indicator span {
+            width: 9px;
+            height: 9px;
+            background: #a97cff;
+            border-radius: 50%;
+            animation: waveAnim 1.3s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: -0.1s; }
+
+        @keyframes waveAnim {
+            0%, 60%, 100% { transform: scale(0.5); opacity: 0.4; }
+            30% { transform: scale(1); opacity: 1; }
+        }
+
+        .input-area {
+            padding: 20px 28px;
+            background: rgba(3, 6, 15, 0.6);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(0, 150, 255, 0.3);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: #01040ce6;
+            border: 1px solid #2a3a60;
+            padding: 14px 22px;
+            border-radius: 48px;
+            color: #eef5ff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.25s;
+            font-weight: 450;
+        }
+
+        .input-wrapper input:focus {
+            border-color: #0cf;
+            box-shadow: 0 0 14px rgba(0, 153, 255, 0.4);
+            background: #030a18;
+        }
+
+        .input-wrapper input::placeholder {
+            color: #5f7396;
+            letter-spacing: 0.3px;
+        }
+
+        .send-btn {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(95deg, #1a3c5e, #0f2b44);
+            border: 1px solid #0cf;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 16px #0099ff;
+            background: #0f3f66;
+        }
+
+        .send-btn svg {
+            stroke: #ccf4ff;
+        }
+
+        /* 响应式: 小屏幕隐藏侧边栏，移动端依然保留返回主页 */
+        @media (max-width: 800px) {
+            .sidebar {
+                display: none;
+            }
+            .bubble {
+                max-width: 85%;
+            }
+            .container {
+                padding: 16px;
+            }
+            /* 添加底部浮动主页按钮 (移动适配) */
+            .mobile-home-btn {
+                display: flex;
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 99;
+                background: rgba(0, 20, 40, 0.85);
+                backdrop-filter: blur(12px);
+                border-radius: 48px;
+                padding: 10px 18px;
+                gap: 8px;
+                border: 1px solid #0cf;
+                color: #b3e4ff;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 13px;
+                align-items: center;
+                box-shadow: 0 0 12px rgba(0,204,255,0.3);
+            }
+            .mobile-home-btn svg {
+                width: 18px;
+                height: 18px;
+                stroke: #b3e4ff;
+            }
+        }
+        @media (min-width: 801px) {
+            .mobile-home-btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starCanvas"></canvas>
+    <div class="glow-aura"></div>
+
+    <div class="container">
+        <!-- 左侧面板 + 全新返回主页按钮 -->
+        <div class="sidebar">
+            <div class="logo">
+                <h1>📡 暗渊 RAG</h1>
+                <p>大黑屋 · 智能知识库</p>
+            </div>
+            <!-- 优雅返回主页区域 -->
+            <div class="back-home">
+                <a href="/" class="back-home-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-5v-8H9v8H4a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>归返·大黑屋</span>
+                </a>
+            </div>
+            <div class="status-card">
+                <div class="status-item"><span>✦ 意识状态</span><span class="status-value" id="status">在线</span></div>
+                <div class="status-item"><span>🧠 推理核心</span><span class="status-value">qwen2.5:7b</span></div>
+                <div class="status-item"><span>📖 检索增强</span><span class="status-value">RAG + bge-large-zh-v1.5</span></div>
+                <div class="status-item"><span>🗂️ 知识库卷宗</span><span class="status-value" id="docCount">加载中...</span></div>
+            </div>
+            <div class="doc-list">
+                <div class="doc-title"><span>📜 渊中典籍</span></div>
+                <div id="documentsList"><div style="color:#7f8fa8;text-align:center;padding:20px;">召唤卷宗中...</div></div>
+            </div>
+        </div>
+
+        <!-- 右侧对话区 -->
+        <div class="chat-main">
+            <div class="messages-area" id="messagesArea">
+                <div class="message assistant">
+                    <div class="avatar">🌀</div>
+                    <div class="bubble">⚡ 大黑屋 · RAG 智识引擎已苏醒 ⚡<br>我是融合知识库的暗渊助手，可基于你的文档提供精准回答。<br>在下方输入问题，吾将调用典籍之力回应你。</div>
+                </div>
+            </div>
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="questionInput" placeholder="📡 键入你的疑问，连接知识渊薮..." onkeypress="if(event.key==='Enter') sendMessage()" autofocus>
+                    <button class="send-btn" onclick="sendMessage()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动端独立主页按钮（优雅小巧） -->
+    <a href="/" class="mobile-home-btn" id="mobileHomeBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-5v-8H9v8H4a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>主页</span>
+    </a>
+
+<script>
+    // ======================== 星尘引擎 (同主页幽邃风格) ========================
+    const canvas = document.getElementById('starCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    let stars = [];
+
+    class Star {
+        constructor() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.r = Math.random() * 2.2 + 0.3;
+            this.speed = Math.random() * 0.35 + 0.05;
+            this.alpha = Math.random() * 0.6 + 0.2;
+            this.color = `rgba(180, 210, 255, ${this.alpha})`;
+            this.twinkle = Math.random() * 0.02 + 0.005;
+            this.dir = Math.random() > 0.5 ? 1 : -1;
+        }
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = this.r * 2;
+            ctx.shadowColor = '#88aaff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        update() {
+            this.y += this.speed;
+            this.alpha += this.twinkle * this.dir;
+            if (this.alpha > 0.85) this.dir = -1;
+            if (this.alpha < 0.2) this.dir = 1;
+            this.color = `rgba(180, 210, 255, ${this.alpha})`;
+            if (this.y > height + 15) {
+                this.y = -15;
+                this.x = Math.random() * width;
+            }
+        }
+    }
+
+    function initStars(count = 150) {
+        stars = [];
+        for (let i = 0; i < count; i++) stars.push(new Star());
+    }
+
+    function animateStars() {
+        ctx.clearRect(0, 0, width, height);
+        stars.forEach(s => { s.draw(); s.update(); });
+        requestAnimationFrame(animateStars);
+    }
+
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        initStars(150);
+    });
+    initStars(150);
+    animateStars();
+
+    // ======================== RAG 对话逻辑（优化流式体验） ========================
+    let sessionId = localStorage.getItem('dark_rag_session');
+    if (!sessionId) {
+        sessionId = 'rag_abyss_' + Date.now() + '_' + Math.random().toString(36).substring(2, 12);
+        localStorage.setItem('dark_rag_session', sessionId);
+    }
+
+    const messagesArea = document.getElementById('messagesArea');
+    const questionInput = document.getElementById('questionInput');
+    const sendBtn = document.querySelector('.send-btn');
+    let activeTypingId = null;
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        }).replace(/\\n/g, '<br>');
+    }
+
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        const avatarIcon = sender === 'user' ? '👤' : '🌀';
+        const bubbleContent = sender === 'assistant' ? escapeHtml(text) : escapeHtml(text);
+        messageDiv.innerHTML = `<div class="avatar">${avatarIcon}</div><div class="bubble">${bubbleContent}</div>`;
+        messagesArea.appendChild(messageDiv);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        return messageDiv;
+    }
+
+    function createStreamingBubble() {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message assistant';
+        msgDiv.innerHTML = '<div class="avatar">🌀</div><div class="bubble"></div>';
+        messagesArea.appendChild(msgDiv);
+        return { container: msgDiv, bubble: msgDiv.querySelector('.bubble') };
+    }
+
+    function showTyping() {
+        if (activeTypingId) document.getElementById(activeTypingId)?.remove();
+        const typingDiv = document.createElement('div');
+        typingDiv.id = 'dynamicTypingRAG';
+        typingDiv.className = 'message assistant';
+        typingDiv.innerHTML = `<div class="avatar">🌀</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
+        messagesArea.appendChild(typingDiv);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        activeTypingId = 'dynamicTypingRAG';
+    }
+
+    function removeTypingIndicator() {
+        if (activeTypingId) {
+            document.getElementById(activeTypingId)?.remove();
+            activeTypingId = null;
+        }
+    }
+
+    async function sendMessage() {
+        const question = questionInput.value.trim();
+        if (!question) return;
+        questionInput.disabled = true;
+        sendBtn.disabled = true;
+        questionInput.value = '';
+        addMessage(question, 'user');
+        showTyping();
+
+        // 优先尝试流式端点 /app1/ask_stream
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
+            const response = await fetch('/app1/ask_stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: question, session_id: sessionId }),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            removeTypingIndicator();
+
+            if (!response.ok) throw new Error('Stream not available');
+
+            const { bubble } = createStreamingBubble();
+            let fullText = '';
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const payload = line.slice(6).trim();
+                    if (payload === '[DONE]') continue;
+
+                    try {
+                        const parsed = JSON.parse(payload);
+                        if (parsed.error) {
+                            bubble.innerHTML = '<span style="color:#ff8a7a">⚠️ ' + escapeHtml(parsed.error) + '</span>';
+                            return;
+                        }
+                        if (parsed.token) {
+                            fullText += parsed.token;
+                            bubble.innerHTML = escapeHtml(fullText);
+                            messagesArea.scrollTop = messagesArea.scrollHeight;
+                        }
+                    } catch (e) { /* 忽略残缺行 */ }
+                }
+            }
+
+            if (!fullText) bubble.innerHTML = '（沉默 无回应）';
+
+        } catch (err) {
+            removeTypingIndicator();
+            // 流式失败，回退至普通端点
+            try {
+                const c2 = new AbortController();
+                const t2 = setTimeout(() => c2.abort(), 60000);
+                const resp = await fetch('/app1/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question, session_id: sessionId }),
+                    signal: c2.signal
+                });
+                clearTimeout(t2);
+                const data = await resp.json();
+                if (data.error) addMessage('⚠️ 渊海扰动 · ' + data.error, 'assistant');
+                else addMessage(data.answer || '（沉默 无回应）', 'assistant');
+            } catch (fallbackErr) {
+                addMessage(
+                    fallbackErr.name === 'AbortError'
+                        ? '⌛ 响应超时，暗渊意识过载…'
+                        : '🌌 星轨断连，无法连接知识库。请确保后端服务可用。',
+                    'assistant'
+                );
+            }
+        } finally {
+            questionInput.disabled = false;
+            sendBtn.disabled = false;
+            questionInput.focus();
+        }
+    }
+
+    async function loadDocuments() {
+        try {
+            const response = await fetch('/app1/api/documents');
+            const data = await response.json();
+            document.getElementById('docCount').innerHTML = data.count + ' 份卷宗';
+            const container = document.getElementById('documentsList');
+            if (!data.documents?.length) container.innerHTML = '<div style="color:#7382a8;text-align:center;padding:24px;">🗄️ 暂无典籍<br>请向 docs/ 投放文档</div>';
+            else container.innerHTML = data.documents.map(doc => `<div class="doc-item">📖 ${escapeHtml(doc.name)}</div>`).join('');
+        } catch (error) {
+            document.getElementById('documentsList').innerHTML = '<div style="color:#ff8a7a;text-align:center">⚠️ 无法加载卷宗</div>';
+        }
+    }
+
+    async function checkHealth() {
+        try {
+            const res = await fetch('/app1/health');
+            const data = await res.json();
+            const statusSpan = document.getElementById('status');
+            if (data.rag_ready || data.status === 'ok') {
+                statusSpan.innerHTML = '在线 ⚡';
+                statusSpan.style.color = '#0cf';
+            } else statusSpan.innerHTML = '初始化中';
+        } catch (e) {
+            document.getElementById('status').innerHTML = '离线';
+        }
+    }
+
+    // 初始化加载数据
+    loadDocuments();
+    checkHealth();
+    setInterval(() => { loadDocuments(); checkHealth(); }, 28000);
+    questionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !sendBtn.disabled) { e.preventDefault(); sendMessage(); } });
+    sendBtn.addEventListener('click', sendMessage);
+    setTimeout(() => questionInput.focus(), 200);
+</script>
+</body>
+</html>

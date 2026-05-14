@@ -1,0 +1,13 @@
+flask
+langchain
+langchain-community
+langchain-chroma
+langchain-ollama
+langchain-text-splitters
+pypdf
+docx2txt
+jieba
+sentence-transformers
+torch
+ragas
+datasets
