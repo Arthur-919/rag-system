@@ -478,8 +478,7 @@ Copyright (c) 2024
 
 ## 👨‍💻 作者
 
-Arthur-919 - GitHub
-个人主页:lixh.fun
+Arthur-919 - GitHub    个人主页 - lixh.fun
 
 ------
 
